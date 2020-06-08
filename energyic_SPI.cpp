@@ -11,8 +11,12 @@
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
  
-// #include <SPI.h>
+ /***
+Raspberry Pi port by Giuseppe Conti    @gic81 -- giuseppe@altervista.it
+***/
+
  #include <bcm2835.h>
+ #include <unistd.h>
  #include <stdio.h>
  #include <iostream>
  #include "energyic_SPI.h"
@@ -35,10 +39,8 @@ void ATM90E26_SPI::SetCRC2(unsigned short crc2) { _crc2 = crc2;}
  unsigned short ATM90E26_SPI::CommEnergyIC(unsigned char RW,/*unsigned*/ char address, unsigned short val){
 	
 
-//	unsigned char* data=(unsigned char*)&val;
-	 char* data=( char*)&val;
-  // char* address_in=&address;
-	unsigned short output;
+	char* data=( char*)&val;
+ 	unsigned short output;
   //SPI interface rate is 200 to 160k bps. It Will need to be slowed down for EnergyIC
   /*#if !defined(ENERGIA) && !defined(ESP8266) && !defined(ARDUINO_ARCH_SAMD)
   SPISettings settings(200000, MSBFIRST, SPI_MODE3);
@@ -54,8 +56,8 @@ void ATM90E26_SPI::SetCRC2(unsigned short crc2) { _crc2 = crc2;}
   #endif*/
    
 	//switch MSB and LSB of value
-/*	output=(val>>8)|(val<<8);
-	val=output;*/
+	output=(val>>8)|(val<<8);
+	val=output;
 	
 	//Set read write flag
 	address|=RW<<7;
@@ -64,76 +66,48 @@ void ATM90E26_SPI::SetCRC2(unsigned short crc2) { _crc2 = crc2;}
   /*#if !defined(ENERGIA)
   SPI.beginTransaction(settings);
   #endif*/
-  //bcm2835_spi_begin();
   //Disable LoRa chip on M0-LoRa
   /*digitalWrite (8,HIGH);     
 	digitalWrite (_cs,LOW);
   delayMicroseconds(10);*/
 	//SPI.transfer(address);
-  //bcm2835_spi_transfern(address_in, sizeof(address));
-  //bcm2835_spi_transfer(address);
-  printf("Address transfered %02X  \n", address);
   /* Must wait 4 us for data to become valid */
   //delayMicroseconds(4);
 
   //Read data
   //Do for each byte in transfer
   char buffer [3];
-  
+ // usleep(10);
   if(RW)
   {  
-    //bcm2835_spi_transfer(address);
-    buffer[0]=address;
+    buffer[0]=address;  // prepare the buffer with data to transmit
     buffer[1]=0x00;
     buffer[2]=0x00;
     bcm2835_spi_transfern(buffer,3);
 
     for (int i=0; i<2; i++)
     {
-      //*data = SPI.transfer (0x00);
-      //*data=0x00;
-      printf("Data before transfer %02X  \n", *data);
-      //bcm2835_spi_transfern(data, sizeof(data));
-      //*data = bcm2835_spi_transfer(0x00);
       *data = buffer[i+1];
-      printf("Data after transfer %02X  \n", *data);
       data++;
     }
-	//Transfer16 is not valid on Energia
-	//val = SPI.transfer16(0x00);
-  
   
   }
   else
   {
-    buffer[0]=address;
-   // bcm2835_spi_transfer(address);
+    buffer[0]=address;  // prepare the buffer with data to transmit       
     for (int i=0; i<2; i++)
     {
-      //SPI.transfer(*data);             // write all the bytes
-      //bcm2835_spi_transfern(data, sizeof(data));
-      //bcm2835_spi_transfer(*data);
       buffer[i+1]=*data;
       data++;
     }
     bcm2835_spi_transfern(buffer,3);
-	//Transfer16 is not valid on Energia
-	//SPI.transfer16(val);
   }
-  
-	//digitalWrite(_cs,HIGH);
-  //Reenable LoRa chip on M0-LoRa
-  //digitalWrite(8,LOW);
-  //delayMicroseconds(10);
-  /*#if !defined(ENERGIA)
-  SPI.endTransaction();
-  #endif*/
- // bcm2835_spi_end();
-        
+
+ // usleep(10);         
 	output=(val>>8)|(val<<8); //reverse MSB and LSB
 	return output;
 	//Use with transfer16
-//	return val;
+	//return val;
 }
 
 double  ATM90E26_SPI::GetLineVoltage(){
@@ -188,25 +162,10 @@ unsigned short ATM90E26_SPI::GetSysStatus(){
 
 void ATM90E26_SPI::InitEnergyIC(){
 	unsigned short systemstatus;
-        
-	//pinMode(energy_IRQ,INPUT );
-	//pinMode(_cs,OUTPUT );
-	//pinMode(energy_WO,INPUT );
- 
-  /* Enable SPI */  
-  //SPI.begin();
-  //bcm2835_spi_begin();
-  /*#if defined(ENERGIA)
-    SPI.setBitOrder(MSBFIRST);
-    SPI.setDataMode(SPI_MODE3);
-    SPI.setClockDivider(SPI_CLOCK_DIV16);
-  #endif*/
-
          
 	CommEnergyIC(0,SoftReset,0x789A); //Perform soft reset
 	CommEnergyIC(0,FuncEn,0x0030); //Voltage sag irq=1, report on warnout pin=1, energy dir change irq=0
-	CommEnergyIC(0,SagTh,0x1F2F); //Voltage sag threshhold
-		
+  CommEnergyIC(0,SagTh,0x1F2F); //Voltage sag threshhold
 
 	//Set metering calibration values
   CommEnergyIC(0,CalStart,0x5678); //Metering calibration startup command. Register 21 to 2B need to be set
@@ -221,8 +180,7 @@ void ATM90E26_SPI::InitEnergyIC(){
   CommEnergyIC(0,MMode,0x9422); //Metering Mode Configuration. All defaults. See pg 31 of datasheet.
   CommEnergyIC(0,CSOne,_crc1); //Write CSOne, as self calculated
   
- /* Serial.print("Checksum 1:");
-  Serial.println(CommEnergyIC(1,CSOne,0x0000),HEX); //Checksum 1. Needs to be calculated based off the above values.*/
+  //Checksum 1. Needs to be calculated based off the above values.*/
   printf("Checksum 1: %02X  \n", CommEnergyIC(1,CSOne,0x0000));
 
   //Set measurement calibration values
@@ -235,23 +193,18 @@ void ATM90E26_SPI::InitEnergyIC(){
   CommEnergyIC(0,QoffsetL,0x0000); //L line reactive power offset
   CommEnergyIC(0,CSTwo,_crc2); //Write CSTwo, as self calculated
   
-  /*Serial.print("Checksum 2:");
-  Serial.println(CommEnergyIC(1,CSTwo,0x0000),HEX);    //Checksum 2. Needs to be calculated based off the above values.*/
+ //Checksum 2. Needs to be calculated based off the above values.*/
   printf("Checksum 2: %02X  \n", CommEnergyIC(1,CSTwo,0x0000));
-
   CommEnergyIC(0,CalStart,0x8765); //Checks correctness of 21-2B registers and starts normal metering if ok
   CommEnergyIC(0,AdjStart,0x8765); //Checks correctness of 31-3A registers and starts normal measurement  if ok
-
   systemstatus = GetSysStatus();
   
   if (systemstatus&0xC000){
     //checksum 1 error
-    //Serial.println("Checksum 1 Error!!");
     printf("Checksum 1 Error!! \n");
   }
   if (systemstatus&0x3000){
     //checksum 2 error
-    //Serial.println("Checksum 2 Error!!");
     printf("Checksum 1 Error!! \n");
   }
 }

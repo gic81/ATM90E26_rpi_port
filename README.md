@@ -11,5 +11,5 @@ To use it follow the instruction below
 3) Compile on Rpi as follows:
 	g++ -o ATM90E26_SPI ATM90E26_SPI.cpp energyic_SPI.cpp -lbcm2835
     
-4) Run as sudo
+4) Run as sudo:
 	sudo ./ATM90E26_SPI
