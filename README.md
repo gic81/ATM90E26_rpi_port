@@ -17,10 +17,9 @@ To use it follow the instruction below
 
 Connections:
 
-/*******************
  * Raspberry Pi SPI Pins:
  * SCLK - 23
  * MISO - 21
  * MOSI - 19
  * CS0  - 24
- *******************/
+ 
