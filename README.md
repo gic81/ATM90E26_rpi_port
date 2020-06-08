@@ -1,4 +1,4 @@
-ATM90E26 Raspberry Pi port by Giuseppe Conti.
+ATM90E26 Raspberry Pi port by Giuseppe Conti tested on Raspberry pi 3.
 
 To use it follow the instruction below
 
@@ -13,3 +13,14 @@ To use it follow the instruction below
     
 4) Run as sudo:
 	sudo ./ATM90E26_SPI
+
+
+Connections:
+
+/*******************
+ * Raspberry Pi SPI Pins:
+ * SCLK - 23
+ * MISO - 21
+ * MOSI - 19
+ * CS0  - 24
+ *******************/
